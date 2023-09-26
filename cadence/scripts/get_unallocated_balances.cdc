@@ -8,7 +8,7 @@ pub fun main(splitterAddress: Address, receiverPaths: [String]): {String: UFix64
             .getCapability(path)
             .borrow<&{FundSplitter.ISplitterPublic}>()
             ?? panic("Could not borrow Splitter")
-        balances[receiverPath] = splitter.remainBalance
+        balances[receiverPath] = splitter.getUnallocatedBalance()
     }
     return balances
 }

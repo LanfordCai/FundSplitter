@@ -8,7 +8,7 @@ pub fun main(splitterAddress: Address, receiverPaths: [String]): {String: {UInt6
             .getCapability(path)
             .borrow<&{FundSplitter.ISplitterPublic}>()
             ?? panic("Could not borrow Splitter")
-        balances[receiverPath] = splitter.balances
+        balances[receiverPath] = splitter.getFloatBalances()
     }
     return balances
 }

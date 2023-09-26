@@ -98,8 +98,8 @@ export const getSplitterBalances = async (splitter) => {
   return result
 }
 
-export const getRemainBalances = async (splitter) => {
-  const name = "get_remain_balances"
+export const getUnallocatedBalances = async (splitter) => {
+  const name = "get_unallocated_balances"
   const args = [splitter, ["flowTokenReceiver", "fusdReceiver"]]
   const [result, error] = await executeScript({ name: name, args: args })
   expect(error).toBeNull()
