@@ -7,7 +7,7 @@
 	},
 	"contracts": {
         "FlowToken": {
-			"source": "../contracts/FlowToken.cdc",
+			"source": "cadence/contracts/utility/FlowToken.cdc",
 			"aliases": {
 				"mainnet": "0x1654653399040a61",
 				"testnet": "0x7e60df042a9c0868",
@@ -15,13 +15,55 @@
 			}
 		},
         "FungibleToken": {
-            "source": "../contracts/FungibleToken.cdc",
+            "source": "cadence/contracts/utility/FungibleToken.cdc",
 			"aliases": {
 				"mainnet": "0xf233dcee88fe0abe",
 				"testnet": "0x9a0766d93b6608b7",
                 "emulator": "0xee82856bf20e2aa6"
 			} 
-        }
+        },
+        "NonFungibleToken": {
+            "source": "cadence/contracts/utility/NonFungibleToken.cdc",
+			"aliases": {
+				"mainnet": "0x1d7e57aa55817448",
+				"testnet": "0x631e88ae7f1d7c20",
+                "emulator": "0xf8d6e0586b0a20c7"
+			} 
+        },
+        "MetadataViews": {
+            "source": "cadence/contracts/utility/MetadataViews.cdc",
+			"aliases": {
+				"mainnet": "0x1d7e57aa55817448",
+				"testnet": "0x631e88ae7f1d7c20",
+                "emulator": "0xf8d6e0586b0a20c7"
+			}
+		},
+        "FUSD": {
+            "source": "cadence/contracts/utility/FUSD.cdc",
+			"aliases": {
+				"mainnet": "0x3c5959b568896393",
+				"testnet": "0xe223d8a629e49c68",
+                "emulator": "0xf8d6e0586b0a20c7"
+			} 
+		},
+        "FLOAT": {
+            "source": "cadence/contracts/utility/FLOAT.cdc",
+			"aliases": {
+                "emulator": "0xf8d6e0586b0a20c7"
+			} 
+		},
+        "FindViews": {
+            "source": "cadence/contracts/utility/FindViews.cdc",
+			"aliases": {
+                "emulator": "0xf8d6e0586b0a20c7"
+			} 
+		},
+        "FundSplitter": {
+            "source": "cadence/contracts/FundSplitter.cdc",
+			"aliases": {
+                "emulator": "0xf8d6e0586b0a20c7"
+			} 
+		}
     },
 	"networks": {
 		"emulator": "127.0.0.1:3569",
@@ -34,5 +76,13 @@
 			"key": "26e43b3809394b62fb04d4dd82d4662127a2f9d2acd1ac1a479e7d2b11afdb5e"
 		}
 	},
-	"deployments": {}
+	"deployments": {
+        "emulator": {
+            "emulator-account": [
+                "FindViews",
+                "FLOAT",
+                "FundSplitter"
+            ]
+        }
+    }
 }

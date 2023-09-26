@@ -1,5 +1,5 @@
-import FungibleToken from "../contracts/utility/FungibleToken.cdc"
-import FUSD from "../contracts/utility/FUSD.cdc"
+import FungibleToken from "FungibleToken"
+import FUSD from "FUSD"
 
 pub fun main(address: Address): UFix64 {
     let account = getAccount(address)

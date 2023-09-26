@@ -1,4 +1,4 @@
-import FundSplitter from "../contracts/FundSplitter"
+import FundSplitter from "FundSplitter"
 
 transaction(
     tokenContractAddresses: [Address],

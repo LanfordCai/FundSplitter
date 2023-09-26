@@ -1,6 +1,6 @@
-import FLOAT from "../contracts/utility/FLOAT.cdc"
-import NonFungibleToken from "../contracts/utility/NonFungibleToken.cdc"
-import MetadataViews from "../contracts/utility/MetadataViews.cdc"
+import FLOAT from "FLOAT"
+import NonFungibleToken from "NonFungibleToken"
+import MetadataViews from "MetadataViews"
 
 transaction {
     let floatEvents: &FLOAT.FLOATEvents

@@ -2,10 +2,9 @@ import path from "path"
 import {
   emulator,
   init,
-  getAccountAddress,
   getFlowBalance,
 } from "@onflow/flow-js-testing";
-import { claimRewards, claimRewardsWithFakeFloat, createFakeFloats, createFlowFUSDSplitter, createFlowFusdSplitter, createSplitterAccount, deployContracts, getAdmin, getAlice, getFloatSerials, getFusdBalance, getRemainBalances, getSplitterBalances, getTesters, mintFusd, setupFusd, transferFloat, transferFlow, transferFusd } from "./helpers";
+import { claimRewards, claimRewardsWithFakeFloat, createFakeFloats, createFlowFUSDSplitter, createFlowFusdSplitter, createSplitterAccount, deployContracts, getAdmin, getAlice, getFloatSerials, getFusdBalance, getRemainBalances, getSplitterBalances, getTesters, getUnallocatedBalances, mintFusd, setupFusd, transferFloat, transferFlow, transferFusd } from "./helpers";
 
 jest.setTimeout(100000)
 
@@ -101,12 +100,18 @@ describe("Splitter", () => {
     const [, createError6] = await createSplitterAccount(admin, [], [], [], "", "", "TEST", "", true, {
       [alice]: "3000", [bob]: "7000"
     }, "1.0")
-    expect(createError6.includes("Tokens should not be empty")).toBeTruthy()
+    expect(createError6.includes("Invalid tokens")).toBeTruthy()
 
-    const [, createError7] = await createFlowFusdSplitter(admin, {
+    const [, createError7] = await createSplitterAccount(admin, ["0x0ae53cb6e3f42a79", "0x0ae53cb6e3f42a79"], 
+      ["FlowToken", "FlowToken"], ["flowTokenReceiver", "flowTokenReceiver"], "", "", "TEST", "", true, {
+      [alice]: "3000", [bob]: "7000"
+    }, "1.0")
+    expect(createError7.includes("Invalid tokens")).toBeTruthy()
+
+    const [, createError8] = await createFlowFusdSplitter(admin, {
       [alice]: "3000", [bob]: "7000"
     }, "0.009")
-    expect(createError7.includes("Init amount should be greater than 0.01")).toBeTruthy()
+    expect(createError8.includes("Init amount should be greater than 0.01")).toBeTruthy()
   })
 
   it("The remaining funds after distribution should be used for subsequent distributions", async () => {
@@ -128,7 +133,7 @@ describe("Splitter", () => {
     await checkFlowBalances({[alice]: "10.00100000", [bob]: "10.00100000"})
     await checkSplitterBalances(splitter, eventId, alice, "0.00000000", "0.00000000")
     await checkSplitterBalances(splitter, eventId, bob, "0.00000000", "0.00000000")
-    await checkRemainBalances(splitter, "0.00000000", "0.00000000")
+    await checkUnallocatedBalances(splitter, "0.00000000", "0.00000000")
 
     let [, transferError1] = await transferFlow(admin, splitter, "0.00005000")
     expect(transferError1).toBeNull()
@@ -136,7 +141,7 @@ describe("Splitter", () => {
     // The part less than 0.0001 will be retained for the next distribution
     await checkSplitterBalances(splitter, eventId, alice, "0.00000000", "0.00000000")
     await checkSplitterBalances(splitter, eventId, bob, "0.00000000", "0.00000000")
-    await checkRemainBalances(splitter, "0.00005000", "0.00000000")
+    await checkUnallocatedBalances(splitter, "0.00005000", "0.00000000")
 
     let [, claimError1] = await claimRewards(alice, splitter)
     expect(claimError1).toBeNull()
@@ -150,7 +155,7 @@ describe("Splitter", () => {
     // Agin, the part less than 0.0001 will be retained for the next distribution.
     await checkSplitterBalances(splitter, eventId, alice, "0.00019998", "0.00000000")
     await checkSplitterBalances(splitter, eventId, bob, "0.00000002", "0.00000000")
-    await checkRemainBalances(splitter, "0.00004000", "0.00000000")
+    await checkUnallocatedBalances(splitter, "0.00004000", "0.00000000")
 
     let [, claimError3] = await claimRewards(alice, splitter)
     expect(claimError3).toBeNull()
@@ -291,8 +296,8 @@ const checkSplitterBalances = async (splitter, eventId, account, expectFlow, exp
   expect(splitterBalances["fusdReceiver"][serial]).toBe(expectFusd) 
 }
 
-const checkRemainBalances = async (splitter, expectFlow, expectFusd) => {
-  let balances = await getRemainBalances(splitter)
+const checkUnallocatedBalances = async (splitter, expectFlow, expectFusd) => {
+  let balances = await getUnallocatedBalances(splitter)
 
   expect(balances["flowTokenReceiver"]).toBe(expectFlow)
   expect(balances["fusdReceiver"]).toBe(expectFusd) 

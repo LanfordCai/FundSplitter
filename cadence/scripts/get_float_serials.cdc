@@ -1,4 +1,4 @@
-import FLOAT from "../contracts/utility/FLOAT.cdc"
+import FLOAT from "FLOAT"
 
 pub fun main(address: Address, eventId: UInt64): [UInt64] {
     let collection = getAuthAccount(address)

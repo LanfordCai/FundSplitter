@@ -1,4 +1,4 @@
-import FundSplitter from "../contracts/FundSplitter"
+import FundSplitter from "FundSplitter"
 
 pub fun main(splitterAddress: Address, receiverPaths: [String]): {String: {UInt64: UFix64}} {
     let balances: {String: {UInt64: UFix64}} = {}
@@ -8,7 +8,7 @@ pub fun main(splitterAddress: Address, receiverPaths: [String]): {String: {UInt6
             .getCapability(path)
             .borrow<&{FundSplitter.ISplitterPublic}>()
             ?? panic("Could not borrow Splitter")
-        balances[receiverPath] = splitter.balances
+        balances[receiverPath] = splitter.getFloatBalances()
     }
     return balances
 }
