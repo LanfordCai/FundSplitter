@@ -1,4 +1,4 @@
-import FungibleToken from "../contracts/utility/FungibleToken.cdc"
+import FungibleToken from "FungibleToken"
 
 transaction(
     providerPathStr: String,

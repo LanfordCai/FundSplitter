@@ -1,4 +1,4 @@
-import FundSplitter from "../contracts/FundSplitter"
+import FundSplitter from "FundSplitter"
 
 pub fun main(splitterAddress: Address, receiverPaths: [String]): {String: UFix64} {
     let balances: {String: UFix64} = {}

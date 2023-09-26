@@ -67,7 +67,7 @@ describe("Splitter", () => {
     await checkSplitterBalances(splitter, eventId, alice, "0.00000000", "0.00000000")
   })
 
-  it.only("Should not be ok if we create splitter with invalid params", async () => {
+  it("Should not be ok if we create splitter with invalid params", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)

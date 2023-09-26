@@ -12,10 +12,10 @@
 //    recording their distribution ratio. When creating the Splitter account, it can be set whether these FLOATs are transferrable. 
 //    If these FLOATs are transferrable, then team members can freely transfer their distribution rights.
 
-import FungibleToken from "./utility/FungibleToken.cdc"
-import NonFungibleToken from "./utility/NonFungibleToken.cdc"
-import MetadataViews from "./utility/MetadataViews.cdc"
-import FLOAT from "./utility/FLOAT.cdc"
+import FungibleToken from "FungibleToken"
+import NonFungibleToken from "NonFungibleToken"
+import MetadataViews from "MetadataViews"
+import FLOAT from "FLOAT"
 
 pub contract FundSplitter {
 

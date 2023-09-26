@@ -34,3 +34,6 @@ yarn-error.log*
 flow.secret.json
 *.private.json
 *.bak
+
+TEST.md
+*.private.json

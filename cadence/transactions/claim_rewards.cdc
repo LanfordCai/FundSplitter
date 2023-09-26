@@ -1,5 +1,5 @@
-import FundSplitter from "../contracts/FundSplitter"
-import FLOAT from "../contracts/utility/FLOAT.cdc"
+import FundSplitter from "FundSplitter"
+import FLOAT from "FLOAT"
 
 transaction(splitterAddress: Address, receiverPaths: [String]) {
 
