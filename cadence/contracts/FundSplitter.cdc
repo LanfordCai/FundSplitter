@@ -186,7 +186,14 @@ pub contract FundSplitter {
     // which can be replaced with splitter: AuthAccount
     // FIXME: Tokens should not duplicated
 
-    // AuthAccount as an argument is a Cadence anti-pattern
+
+    // We pass the signer in here as a parameter to generate the Splitter Account. An alternative approach would be to 
+    // generate the AuthAccount externally and then pass it in. However, the problem is, even if we can confirm that the
+    // passed-in AuthAccount does not have any keys, we cannot guarantee that it has not been manipulated in ways beyond 
+    // our expectations externally. The safest way is to ensure the Splitter Account is generated within the contract. 
+    // After the deployer key of this contract is revoked, the concern about passing in the signer will be greatly alleviated.
+    // 
+    // NOTE: AuthAccount as an argument is a Cadence anti-pattern
     // SEE: https://developers.flow.com/cadence/anti-patterns#avoid-using-authaccount-as-a-function-parameter
     // But it is necessary here
     pub fun createSplitterAccount(
