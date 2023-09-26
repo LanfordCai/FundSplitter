@@ -1,3 +1,17 @@
+// MADE BY: Lanford33
+
+// FundSplitter is used to distribute funds among a group of users according to a set ratio. 
+// Unlike common bulk transfers, it has the following features:
+
+// 1. FundSplitter provides a unified collection account (hereinafter referred to as the Splitter Account) 
+//    for the team. The fund issuer does not need to use a bulk transfer tool, but can directly transfer 
+//    the funds into the Splitter Account, and the distribution will be carried out by it.
+// 2. The Splitter account is a keyless account, and FundSplitter will also revoke the keys of the deployer 
+//    after stabilization, making the Splitter Account fully decentralized.
+// 3. FundSplitter will distribute a FLOAT to each group member. This FLOAT serves as a Share certificate 
+//    recording their distribution ratio. When creating the Splitter account, it can be set whether these FLOATs are transferrable. 
+//    If these FLOATs are transferrable, then team members can freely transfer their distribution rights.
+
 import FungibleToken from "./utility/FungibleToken.cdc"
 import NonFungibleToken from "./utility/NonFungibleToken.cdc"
 import MetadataViews from "./utility/MetadataViews.cdc"
@@ -5,65 +19,51 @@ import FLOAT from "./utility/FLOAT.cdc"
 
 pub contract FundSplitter {
 
+    /************************************************/
+    /******************** EVENTS ********************/
+    /************************************************/
+
     pub event ContractInitialized()
     pub event SplitterAccountCreated(splitter: Address, creator: Address)
     pub event SplitterDeposit(splitter: Address, amount: UFix64)
     pub event SplitterClaimed(splitter: Address, amount: UFix64, receiver: Address)
 
+    /***********************************************/
+    /**************** FUNCTIONALITY ****************/
+    /***********************************************/
+
+    // Public interface for the Splitter resource
     pub resource interface ISplitterPublic {
+        // Token information of the splitter
         pub let tokenInfo: TokenInfo
+        // FLOATEvent id associated with the splitter
         pub let eventId: UInt64
+        // The balance to be allocated in the splitter
         pub var remainBalance: UFix64
+        // The allocated balances.
+        // The key is FLOAT serial,
+        // The value is the balance allocated to the FLOAT
         pub let balances: {UInt64: UFix64}
+        // Used for claiming funds for the splitter
         pub fun claim(float: &FLOAT.NFT)
     }
 
-    // can only be created by using this contract
+    // Splitter resource that implements FungibleToken.Receiver and ISplitterPublic
+    // A Splitter will be linked to the token receiver path(e.g. /public/flowTokenReceiver)
+    // so that the Splitter can handle deposits to the account
+    // Splitter can only be created in this contract
     pub resource Splitter: FungibleToken.Receiver, ISplitterPublic {
-
+        // Splitter vault, used to store the unclaimed funds
         pub let vault: @FungibleToken.Vault
+
+        // implements ISplitterPublic
         pub let tokenInfo: TokenInfo
         pub let eventId: UInt64
         pub var remainBalance: UFix64
-        // How about using @{UInt64: FungibleToken.Vault} here?
-        // compare gas comsumption
-        // serial => balance
         pub let balances: {UInt64: UFix64}
 
-        pub fun deposit(from: @FungibleToken.Vault) {
-            pre {
-                from.balance > 0.0: "Deposit amount should be greater than 0"
-            }
-
-            let depositAmount = from.balance
-            self.remainBalance = self.remainBalance + from.balance
-            self.vault.deposit(from: <-from)
-
-            let distributionAmount = self.remainBalance - (self.remainBalance % 0.0001)
-            if distributionAmount == 0.0 {
-                return
-            }
-
-            let serials = self.balances.keys
-            let events = getAccount(self.owner!.address)
-                .getCapability(FLOAT.FLOATEventsPublicPath)
-                .borrow<&{FLOAT.FLOATEventsPublic}>()
-                ?? panic("Borrow FLOATEvents failed")
-            let event = events.borrowPublicEventRef(eventId: self.eventId)!
-
-            for serial in serials {
-                let extraData = event.getExtraFloatMetadata(serial: serial)
-                let share = (extraData["share"]! as! UInt16?)!
-                let amount = distributionAmount * (UFix64(share) / 10000.0)
-
-                let b = self.balances[serial]!
-                self.balances[serial] = b + amount
-                self.remainBalance = self.remainBalance - amount
-            }
-
-            emit SplitterDeposit(splitter: self.owner!.address, amount: depositAmount)
-        }
-
+        // A user should claim the funds with the FLOAT, and the funds will be sent to
+        // the owner of the FLOAT.
         pub fun claim(float: &FLOAT.NFT) {
             pre {
                 float.eventId == self.eventId: "Invalid event"
@@ -72,6 +72,7 @@ pub contract FundSplitter {
 
             let balance = self.balances[float.serial]!
             self.balances[float.serial] = 0.0
+            // If there is nothing to claim, return fast
             if balance == 0.0 {
                 return
             }
@@ -88,6 +89,49 @@ pub contract FundSplitter {
             emit SplitterClaimed(splitter: self.owner!.address, amount: balance, receiver: claimee)
         }
 
+        // implements FungibleToken.Receiver 
+        pub fun deposit(from: @FungibleToken.Vault) {
+            pre {
+                from.balance > 0.0: "Deposit amount should be greater than 0"
+            }
+
+            let depositAmount = from.balance
+            self.remainBalance = self.remainBalance + from.balance
+            self.vault.deposit(from: <-from)
+
+            // Our minimum share is 0.01%. Currently, the minimum amount of tokens on Flow is 0.00000001. 
+            // Therefore, only when the allocation amount is 0.00000001 * 10000 = 0.0001 (or its multiples), 
+            // can the user holding one ten thousandth of the share also receive their share without 
+            // suffering losses due to precision issues.
+            // Here we take an amount that is a multiple of 0.0001 from remainBalance.
+            let allocationAmount = self.remainBalance - (self.remainBalance % 0.0001)
+            // If remainBalance is less than 0.0001, return directly
+            if allocationAmount == 0.0 {
+                return
+            }
+
+            let serials = self.balances.keys
+            let events = getAccount(self.owner!.address)
+                .getCapability(FLOAT.FLOATEventsPublicPath)
+                .borrow<&{FLOAT.FLOATEventsPublic}>()
+                ?? panic("Borrow FLOATEvents failed")
+            let event = events.borrowPublicEventRef(eventId: self.eventId)!
+
+            for serial in serials {
+                // Take the corresponding share from the event and calculate the amount to be allocated
+                let extraData = event.getExtraFloatMetadata(serial: serial)
+                let share = (extraData["share"]! as! UInt16?)!
+                let amount = allocationAmount * (UFix64(share) / 10000.0)
+
+                let b = self.balances[serial]!
+                // Allocate funds and subtract the already allocated amount from remainBalance
+                self.balances[serial] = b + amount
+                self.remainBalance = self.remainBalance - amount
+            }
+
+            emit SplitterDeposit(splitter: self.owner!.address, amount: depositAmount)
+        }
+
         destroy() {
             pre {
                 self.vault.balance == 0.0: "vault is not empty, please withdraw all funds before delete DROP"
@@ -102,8 +146,8 @@ pub contract FundSplitter {
         ) {
             self.eventId = event.eventId
 
+            // Borrow token contract through token information for vault initialization
             self.tokenInfo = tokenInfo
-
             let tokenAccount = getAccount(tokenInfo.contractAddress)
             let tokenContract = tokenAccount.contracts.borrow<&FungibleToken>(name: tokenInfo.contractName)
                 ?? panic("borrow token contract failed! contractAddress: "
@@ -111,8 +155,8 @@ pub contract FundSplitter {
                     .concat(" contractName: ")
                     .concat(tokenInfo.contractName)
                 )
-
             self.vault <- tokenContract.createEmptyVault()
+
             self.remainBalance = 0.0
 
             let tokenIdentifiers = event.getClaims().values
@@ -124,9 +168,11 @@ pub contract FundSplitter {
         }
     }
 
+    // A helpful wrapper to hold token information
     pub struct TokenInfo {
         pub let contractAddress: Address
         pub let contractName: String
+        // Public path for the token receiver capability
         pub let receiverPublicPath: PublicPath
 
         init(contractAddress: Address, contractName: String, receiverPublicPath: PublicPath) {
@@ -136,7 +182,13 @@ pub contract FundSplitter {
         }
     }
 
-    // FIXME: we use AuthAccount here
+    // FIXME: we use signer: AuthAccount here,
+    // which can be replaced with splitter: AuthAccount
+    // FIXME: Tokens should not duplicated
+
+    // AuthAccount as an argument is a Cadence anti-pattern
+    // SEE: https://developers.flow.com/cadence/anti-patterns#avoid-using-authaccount-as-a-function-parameter
+    // But it is necessary here
     pub fun createSplitterAccount(
         signer: AuthAccount,
         tokens: [TokenInfo],
@@ -193,6 +245,8 @@ pub contract FundSplitter {
         return acct.address
     }
 
+    // Helper function to validate shares
+    // It checks whether the sum of all shares is exactly 10000 (100%)
     access(self) fun withValidShares(_ recipients: {Address: UInt16}): Bool {
         var sum: UInt16 = 0
         for v in recipients.values {
@@ -202,6 +256,9 @@ pub contract FundSplitter {
         return sum == 10000
     }
 
+    // Helper function to create a Splitter
+    // It creates a new Splitter resource, saves it to the account's storage
+    // and links it to the token's receiver public path
     access(self) fun createSplitter(acct: AuthAccount, eventPublicRef: &FLOAT.FLOATEvent{FLOAT.FLOATEventPublic}, tokenInfo: TokenInfo) {
         let splitter <- create Splitter(event: eventPublicRef, tokenInfo: tokenInfo)
 
@@ -212,8 +269,9 @@ pub contract FundSplitter {
         acct.link<&{FungibleToken.Receiver, ISplitterPublic}>(tokenInfo.receiverPublicPath, target: storagePath)
     }
 
+    // Helper function to setup FLOAT
+    // It creates and links a FLOATEvents collection to the account if it doesn't exist
     access(self) fun setupFLOAT(_ acct: AuthAccount) {
-        // SETUP FLOATEVENTS
         if acct.borrow<&FLOAT.FLOATEvents>(from: FLOAT.FLOATEventsStoragePath) == nil {
             acct.save(<- FLOAT.createEmptyFLOATEventCollection(), to: FLOAT.FLOATEventsStoragePath)
             acct.link<&FLOAT.FLOATEvents{FLOAT.FLOATEventsPublic, MetadataViews.ResolverCollection}>
@@ -221,6 +279,8 @@ pub contract FundSplitter {
         }
     }
 
+    // Helper function to distribute FLOATs
+    // It mints new FLOATs and distributes them to the recipients based on their shares
     access(self) fun distributeFLOATs(event: &FLOAT.FLOATEvent, recipients: {Address: UInt16}): [UInt64] {
         var serials: [UInt64] = []
         for address in recipients.keys {
