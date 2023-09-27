@@ -23,7 +23,7 @@ describe("Splitter", () => {
     return await new Promise(r => setTimeout(r, 2000));
   })
 
-  it("Should be ok if we create splitter and claim rewards with valid params", async () => {
+  it("It should be okay if we create a splitter and claim rewards with valid parameters.", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)
@@ -67,7 +67,7 @@ describe("Splitter", () => {
     await checkSplitterBalances(splitter, eventId, alice, "0.00000000", "0.00000000")
   })
 
-  it("Should not be ok if we create splitter with invalid params", async () => {
+  it("It should not be okay if we create a splitter with invalid parameters.", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)
@@ -114,7 +114,7 @@ describe("Splitter", () => {
     expect(createError8.includes("Init amount should be greater than 0.01")).toBeTruthy()
   })
 
-  it("The remaining funds after distribution should be used for subsequent distributions", async () => {
+  it("The remaining funds after distribution should be used for subsequent distributions.", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)
@@ -164,7 +164,7 @@ describe("Splitter", () => {
     await checkFlowBalances({[alice]: "10.00119998", [bob]: "10.00100002"})
   })
 
-  it("An user can have multiple FLOAT shares", async () => {
+  it("A user can have multiple FLOAT shares.", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)
@@ -210,7 +210,7 @@ describe("Splitter", () => {
     })
   })
 
-  it("An user can't claim with invalid FLOAT", async () => {
+  it("A user can't claim with invalid FLOAT.", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)
@@ -235,7 +235,7 @@ describe("Splitter", () => {
     expect(claimError.includes("Invalid event")).toBeTruthy()
   })
 
-  it.only("Splitter Account can be used as shareholder of another Splitter Account", async () => {
+  it("A Splitter Account can be used as a shareholder of another Splitter Account.", async () => {
     // create Splitter
     let admin = await getAdmin()
     await setupFusd(admin)

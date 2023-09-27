@@ -52,10 +52,10 @@ pub contract FundSplitter {
     // so that the Splitter can handle deposits to the account
     // Splitter can only be created in this contract
     pub resource Splitter: FungibleToken.Receiver, ISplitterPublic {
-        // Splitter vault, used to store the unallocated funds
+        // Splitter vault, used to store the unclaimed funds
         pub let vault: @FungibleToken.Vault
-        // The key is FLOAT serial and the value is unclaimed funds of that FLOAT
-        pub let balances: @{UInt64: FungibleToken.Vault}
+        // The key is FLOAT serial and the value is allocated funds of that FLOAT
+        pub let balances: {UInt64: UFix64}
 
         // implements ISplitterPublic
         pub let tokenInfo: TokenInfo
@@ -69,12 +69,12 @@ pub contract FundSplitter {
                 self.balances.containsKey(float.serial): "Ineligible FLOAT"
             }
 
-            let v = (&self.balances[float.serial] as &FungibleToken.Vault?)!
             // If there is nothing to claim, return fast
-            let balance = v.balance
+            let balance = self.balances[float.serial]!
             if balance == 0.0 {
                 return
             }
+            self.balances[float.serial] = 0.0
 
             // Transfer the claimed amount to the owner of the FLOAT
             let claimee = float.owner!.address
@@ -83,24 +83,22 @@ pub contract FundSplitter {
                 .borrow<&{FungibleToken.Receiver}>()
                 ?? panic("Could not borrow Receiver from claimee")
 
-            receiver.deposit(from: <- v.withdraw(amount: balance))
+            receiver.deposit(from: <- self.vault.withdraw(amount: balance))
             emit SplitterClaimed(splitter: self.owner!.address, amount: balance, receiver: claimee)
         }
 
         // Get the unallocated balance in the splitter
         pub fun getUnallocatedBalance(): UFix64 {
-            return self.vault.balance
+            var allocated: UFix64 = 0.0
+            for b in self.balances.values {
+                allocated = allocated + b
+            }
+            return self.vault.balance - allocated
         }
 
         // Get the balances allocated to FLOATs
         pub fun getFloatBalances(): {UInt64: UFix64} {
-            let serials = self.balances.keys
-            let balances: {UInt64: UFix64} = {}
-            for serial in serials {
-                let v = (&self.balances[serial] as &FungibleToken.Vault?)!
-                balances[serial] = v.balance
-            }
-            return balances
+            return self.balances
         }
 
         // implements FungibleToken.Receiver 
@@ -118,11 +116,12 @@ pub contract FundSplitter {
             // suffering losses due to precision issues.
             //
             // If unallocated balance is less than 0.0001, return directly
-            if self.vault.balance < 0.0001 {
+            let unallocated = self.getUnallocatedBalance()
+            if unallocated < 0.0001 {
                 return
             }
             // Here we take an amount that is a multiple of 0.0001 from unallocated balance.
-            let allocationAmount = self.vault.balance - (self.vault.balance % 0.0001)
+            let allocationAmount = unallocated - (unallocated % 0.0001)
 
             // Allocate the balance to each FLOAT
             let serials = self.balances.keys
@@ -138,8 +137,8 @@ pub contract FundSplitter {
                 let share = (extraData["share"]! as! UInt16?)!
                 let amount = allocationAmount * (UFix64(share) / 10000.0)
 
-                let v = (&self.balances[serial] as &FungibleToken.Vault?)!
-                v.deposit(from: <- self.vault.withdraw(amount: amount))
+                let b = self.balances[serial]!
+                self.balances[serial] = b + amount
             }
 
             emit SplitterDeposit(splitter: self.owner!.address, amount: depositAmount)
@@ -150,12 +149,6 @@ pub contract FundSplitter {
                 self.vault.balance == 0.0: "vault is not empty, please withdraw all funds before delete Splitter"
             }
             destroy self.vault
-
-            let floatBalances = self.getFloatBalances()
-            for v in floatBalances.values {
-                assert(v == 0.0, message: "vault is not empty, please withdraw all funds before delete Splitter")
-            }
-            destroy self.balances
         }
 
         init(
@@ -176,11 +169,11 @@ pub contract FundSplitter {
             self.vault <- tokenContract.createEmptyVault()
 
             let tokenIdentifiers = event.getClaims().values
-            var balances: @{UInt64: FungibleToken.Vault} <- {}
+            var balances: {UInt64: UFix64} = {}
             for tokenId in tokenIdentifiers {
-                balances[tokenId.serial] <-! tokenContract.createEmptyVault()
+                balances[tokenId.serial] = 0.0
             }
-            self.balances <- balances
+            self.balances = balances
         }
     }
 
