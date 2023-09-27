@@ -59,6 +59,13 @@ export const claimRewards = async (signer, splitterAddress) => {
   return await sendTransaction({ name: name, signers: signers, args: args})
 }
 
+export const claimRewardsForAddress = async (signer, splitterAddress, address) => {
+  const signers = [signer]
+  const name = "claim_rewards_for_address"
+  const args = [splitterAddress, address, ["flowTokenReceiver", "fusdReceiver"]]
+  return await sendTransaction({ name: name, signers: signers, args: args})
+}
+
 export const claimRewardsWithFakeFloat = async (signer, splitterAddress) => {
   const signers = [signer]
   const name = "claim_rewards_with_fake_float"

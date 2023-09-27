@@ -4,7 +4,7 @@ import {
   init,
   getFlowBalance,
 } from "@onflow/flow-js-testing";
-import { claimRewards, claimRewardsWithFakeFloat, createFakeFloats, createFlowFUSDSplitter, createFlowFusdSplitter, createSplitterAccount, deployContracts, getAdmin, getAlice, getFloatSerials, getFusdBalance, getRemainBalances, getSplitterBalances, getTesters, getUnallocatedBalances, mintFusd, setupFusd, transferFloat, transferFlow, transferFusd } from "./helpers";
+import { claimRewards, claimRewardsForAddress, claimRewardsWithFakeFloat, createFakeFloats, createFlowFUSDSplitter, createFlowFusdSplitter, createSplitterAccount, deployContracts, getAdmin, getAlice, getFloatSerials, getFusdBalance, getRemainBalances, getSplitterBalances, getTesters, getUnallocatedBalances, mintFusd, setupFusd, transferFloat, transferFlow, transferFusd } from "./helpers";
 
 jest.setTimeout(100000)
 
@@ -233,6 +233,52 @@ describe("Splitter", () => {
 
     const [, claimError] = await claimRewardsWithFakeFloat(carl, splitter)
     expect(claimError.includes("Invalid event")).toBeTruthy()
+  })
+
+  it.only("Splitter Account can be used as shareholder of another Splitter Account", async () => {
+    // create Splitter
+    let admin = await getAdmin()
+    await setupFusd(admin)
+    await mintFusd(admin, 1000.0, admin)
+
+    let [alice, bob] = await getTesters()
+    // 3000 == 30%
+    const [createResult1, createError1] = await createFlowFusdSplitter(admin, {
+      [alice]: "4000", [bob]: "6000"
+    })
+
+    expect(createError1).toBeNull()
+    let splitter1 = getSplitter(createResult1.events)
+
+    const [createResult2, createError2] = await createFlowFusdSplitter(admin, {
+      [splitter1]: "5000", [bob]: "5000"
+    })
+
+    expect(createError2).toBeNull()
+    let splitter2 = getSplitter(createResult2.events)
+
+    // distribute FLOW and FUSD
+    await checkFlowBalances({
+      [alice]: "10.00100000", [bob]: "10.00100000", [splitter1]: "1.00100000"
+    })
+
+    let [, transferError1] = await transferFlow(admin, splitter1, "100.0")
+    expect(transferError1).toBeNull()
+    let [, transferError2] = await transferFlow(admin, splitter2, "200.0")
+    expect(transferError2).toBeNull()
+
+    let [, claimError1] = await claimRewardsForAddress(bob, splitter2, splitter1)
+    expect(claimError1).toBeNull()
+    let [, claimError2] = await claimRewards(alice, splitter1)
+    expect(claimError2).toBeNull()
+    let [, claimError3] = await claimRewards(bob, splitter1)
+    expect(claimError3).toBeNull()
+    let [, claimError4] = await claimRewards(bob, splitter2)
+    expect(claimError4).toBeNull()
+
+    await checkFlowBalances({
+      [alice]: "90.00100000", [bob]: "230.00100000", [splitter1]: "1.00100000"
+    })
   })
 })
 

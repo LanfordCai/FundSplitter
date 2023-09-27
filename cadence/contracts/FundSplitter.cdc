@@ -11,6 +11,7 @@
 // 3. FundSplitter will distribute a FLOAT to each group member. This FLOAT serves as a Share certificate 
 //    recording their distribution ratio. When creating the Splitter account, it can be set whether these FLOATs are transferrable. 
 //    If these FLOATs are transferrable, then team members can freely transfer their distribution rights.
+// 4. A SplitterAccount can act as a shareholder of another SplitterAccount.
 
 import FungibleToken from "FungibleToken"
 import NonFungibleToken from "NonFungibleToken"
@@ -301,16 +302,24 @@ pub contract FundSplitter {
 
         let identifier = "FundSplitter_".concat(tokenInfo.getIdentifier())
 
-
         let storagePath = StoragePath(identifier: identifier)!
         acct.save(<- splitter, to: storagePath)
         acct.unlink(tokenInfo.receiverPublicPath)
         acct.link<&{FungibleToken.Receiver, ISplitterPublic}>(tokenInfo.receiverPublicPath, target: storagePath)
     }
 
-    // Helper function to setup FLOAT
-    // It creates and links a FLOATEvents collection to the account if it doesn't exist
+    // Helper function to set up FLOAT
+    // This function creates and links a FLOAT collection and a FLOATEvents collection to the account if they don't already exist
     access(self) fun setupFLOAT(_ acct: AuthAccount) {
+        // A FLOAT collection is created and linked for the Splitter Account so that it can be used
+        // as a shareholder of another Splitter Account
+        if acct.borrow<&FLOAT.Collection>(from: FLOAT.FLOATCollectionStoragePath) == nil {
+            acct.save(<- FLOAT.createEmptyCollection(), to: FLOAT.FLOATCollectionStoragePath)
+            acct.link<&FLOAT.Collection{NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic, MetadataViews.ResolverCollection, FLOAT.CollectionPublic}>
+                (FLOAT.FLOATCollectionPublicPath, target: FLOAT.FLOATCollectionStoragePath)
+        }
+
+        // If a FLOATEvents collection does not exist, it is created and linked to the account
         if acct.borrow<&FLOAT.FLOATEvents>(from: FLOAT.FLOATEventsStoragePath) == nil {
             acct.save(<- FLOAT.createEmptyFLOATEventCollection(), to: FLOAT.FLOATEventsStoragePath)
             acct.link<&FLOAT.FLOATEvents{FLOAT.FLOATEventsPublic, MetadataViews.ResolverCollection}>
