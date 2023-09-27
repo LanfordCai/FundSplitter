@@ -224,6 +224,7 @@ pub contract FundSplitter {
             self.withValidShares(recipients): "Invalid shares"
         }
 
+        // Add some FLOW to the Splitter Account to ensure it has sufficient storage fee.
         let initVault <- signer
             .borrow<&{FungibleToken.Provider}>(from: /storage/flowTokenVault)!
             .withdraw(amount: initAmount)
@@ -233,8 +234,12 @@ pub contract FundSplitter {
             .borrow()!
             .deposit(from: <- initVault)
 
+        // Setup the FLOAT for the new Splitter Account
         self.setupFLOAT(acct)
 
+        // Create a new FLOAT event.
+        // This event is used to mint FLOATs for the shareholders.
+        // The host of this event is the keyless Splitter Account.
         let events = acct.borrow<&FLOAT.FLOATEvents>(from: FLOAT.FLOATEventsStoragePath) 
             ?? panic("Could not borrow the FLOATEvents from the account.")
         let eventId = events.createEvent(
@@ -250,10 +255,12 @@ pub contract FundSplitter {
             extraMetadata: {}
         )
 
+        // Mint FLOATs for the shareholders
         let event = events.borrowEventRef(eventId: eventId)!
         self.distributeFLOATs(event: event, recipients: recipients)
-        let eventPublicRef = events.borrowPublicEventRef(eventId: eventId)!
 
+        // Create Splitters for the tokens
+        let eventPublicRef = events.borrowPublicEventRef(eventId: eventId)!
         for i, tokenInfo in tokens {
             self.createSplitter(acct: acct, eventPublicRef: eventPublicRef, tokenInfo: tokenInfo)    
         }
